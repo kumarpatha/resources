@@ -16,7 +16,7 @@ class Product extends Model
     ];
 
     public function project(){
-        return $this->hasOne(Project::class,'id', 'project_id');
+        return $this->hasOne(Project::class, 'id', 'project_id');
     }
 
     public function productdocs()
@@ -24,4 +24,7 @@ class Product extends Model
         return $this->hasMany(ProductFile::class);
     }
 
+    public function category() {
+        return $this->belongsTo(ProductCategory::class, 'category', 'id');
+    }
 }

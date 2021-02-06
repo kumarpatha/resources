@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 
 use App\Models\Product;
 use App\Models\ProductFile;
+use Illuminate\Support\Facades\Storage;
 use DB;
 
 class ProductController extends Controller
@@ -26,28 +27,28 @@ class ProductController extends Controller
             'product_name' => 'required',
             'project_id' => 'required',
             'description' => 'required',
-            'category' => 'required',
-            'building_part' => 'required',
-            'quantity' => 'required',
-            'unit' => 'required',
-            'height' => 'required',
-            'width' => 'required',
-            'length' => 'required',
-            'production_year' => 'required',
-            'location_building' => 'required',
-            'brand_name' => 'required',
-            'documentation' => 'required',
-            'product_info' => 'required',
-            'color' => 'required',
-            'hazardous' => 'required',
-            'evaluvation' => 'required',
-            'precondition' => 'required',
-            'reuse' => 'required',
-            'recommendation' => 'required',
-            'price_new_product' => 'required',
-            'price_used_product' => 'required',
-            'price_sold_product' => 'required',
-            'imageFile' => 'required'
+            // 'category' => 'required',
+            // 'building_part' => 'required',
+            // 'quantity' => 'required',
+            // 'unit' => 'required',
+            // 'height' => 'required',
+            // 'width' => 'required',
+            // 'length' => 'required',
+            // 'production_year' => 'required',
+            // 'location_building' => 'required',
+            // 'brand_name' => 'required',
+            // 'documentation' => 'required',
+            // 'product_info' => 'required',
+            // 'color' => 'required',
+            // 'hazardous' => 'required',
+            // 'evaluvation' => 'required',
+            // 'precondition' => 'required',
+            // 'reuse' => 'required',
+            // 'recommendation' => 'required',
+            // 'price_new_product' => 'required',
+            // 'price_used_product' => 'required',
+            // 'price_sold_product' => 'required',
+            // 'imageFile' => 'required'
         ]);
         
         $product = new Product;
@@ -81,20 +82,23 @@ class ProductController extends Controller
         if($request->hasFile('imageFile')) {
             $image = $request->file('imageFile');
             $name = time().rand().'.'.$image->getClientOriginalExtension();
-            $file_path = '/uploads/products/';
-            $destinationPath = public_path($file_path);
-            $image->move($destinationPath, $name);
+            $file_path = 'uploads/products/';
+            //$destinationPath = public_path($file_path);
+            //$image->move($destinationPath, $name);
+            Storage::disk('s3')->put($file_path.$name, file_get_contents($image));
             $product->product_image = $name;
         }
         $product->save();
         $product_id = $product->id;
         if($request->hasFile('imagemultiFile')){
-            foreach($request->file('imagemultiFile') as $eachfile) {
-                $name = time().rand().'.'.$eachfile->getClientOriginalExtension();
-                $file_path = '/uploads/products/documents/';
-                $destinationPath = public_path($file_path);
-                $eachfile->move($destinationPath, $name);
+            foreach($request->file('imagemultiFile') as $k=>$eachfile) {
+                $name = pathinfo($eachfile->getClientOriginalName(), PATHINFO_FILENAME).'_'.time().'.'.$eachfile->getClientOriginalExtension();
+                $file_path = 'uploads/products/documents/';
+                //$destinationPath = public_path($file_path);
+                //$eachfile->move($destinationPath, $name);
+                Storage::disk('s3')->put($file_path.$name, file_get_contents($eachfile));
                 $productlist = new ProductFile;
+                $productlist->category_id =  $request->input('filecategory')[$k];
                 $productlist->file_name = $name;
                 $productlist->product_id = $product_id;
                 $productlist->save();
@@ -111,9 +115,9 @@ class ProductController extends Controller
         $products = Product::with(['project' => function($query){
                         $query->select('project_name', 'id', 'project_image');
                     }])->with(['productdocs' => function($query){
-                        $query->select('product_id', 'file_name');
-                    }])->get();
-        return response()->json(['status'=>'1','message' => 'product List', 'products' => $products, 'image_base_path' => url('/uploads/products/')], 200);
+                        $query->select('id','category_id','product_id', 'file_name')->with('productCategory');
+                    }])->with('category')->get();
+        return response()->json(['status'=>'1','message' => 'product List', 'products' => $products, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/products'], 200);
     }
 
     public function search_product(Request $request) {
@@ -122,7 +126,7 @@ class ProductController extends Controller
         $products = Product::with(['project' => function($query) {
                                 $query->select('project_name', 'id', 'project_image');
                             }])->with(['productdocs' => function($query){
-                                $query->select('product_id', 'file_name');
+                                $query->select('id','category_id','product_id', 'file_name')->with('productCategory');
                             }])
                             ->where('status', '=', '1')
                             ->where(function($query) use ($search_text) {
@@ -131,18 +135,18 @@ class ProductController extends Controller
                                 ->orWhere('description', 'Like', '%'.$search_text.'%');
                             })
                             ->get();
-        return response()->json(['status'=>'1','message' => 'product List', 'products' => $products, 'image_base_path' => url('/uploads/products/')], 200);
+        return response()->json(['status'=>'1','message' => 'product List', 'products' => $products, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/products'], 200);
     }
 
     public function get_product_info($id){
         $product = Product::with(['project' => function($query){
             $query->select('project_name', 'id', 'project_image');
         }])->with(['productdocs' => function($query){
-            $query->select('product_id', 'file_name');
+            $query->select('id','category_id','product_id', 'file_name')->with('productCategory');
         }])
         ->where('id', $id)
         ->first();
-        return response()->json(['status'=>'1','message' => 'product info', 'product' => $product, 'image_base_path' => url('/uploads/products/')], 200);
+        return response()->json(['status'=>'1','message' => 'product info', 'product' => $product, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/products'], 200);
     }
 
     public function edit_product(Request $request){
@@ -151,27 +155,27 @@ class ProductController extends Controller
             'id' => 'required',
             'project_id' => 'required',
             'description' => 'required',
-            'category' => 'required',
-            'building_part' => 'required',
-            'quantity' => 'required',
-            'unit' => 'required',
-            'height' => 'required',
-            'width' => 'required',
-            'length' => 'required',
-            'production_year' => 'required',
-            'location_building' => 'required',
-            'brand_name' => 'required',
-            'documentation' => 'required',
-            'product_info' => 'required',
-            'color' => 'required',
-            'hazardous' => 'required',
-            'evaluvation' => 'required',
-            'precondition' => 'required',
-            'reuse' => 'required',
-            'recommendation' => 'required',
-            'price_new_product' => 'required',
-            'price_used_product' => 'required',
-            'price_sold_product' => 'required'
+            // 'category' => 'required',
+            // 'building_part' => 'required',
+            // 'quantity' => 'required',
+            // 'unit' => 'required',
+            // 'height' => 'required',
+            // 'width' => 'required',
+            // 'length' => 'required',
+            // 'production_year' => 'required',
+            // 'location_building' => 'required',
+            // 'brand_name' => 'required',
+            // 'documentation' => 'required',
+            // 'product_info' => 'required',
+            // 'color' => 'required',
+            // 'hazardous' => 'required',
+            // 'evaluvation' => 'required',
+            // 'precondition' => 'required',
+            // 'reuse' => 'required',
+            // 'recommendation' => 'required',
+            // 'price_new_product' => 'required',
+            // 'price_used_product' => 'required',
+            // 'price_sold_product' => 'required'
         ]);
         
         $product = Product::find($request->input('id'));
@@ -214,12 +218,13 @@ class ProductController extends Controller
         $product_id = $product->id;
         if($request->hasFile('imagemultiFile')){
             //ProductFile::where('product_id', $product_id)->delete();
-            foreach($request->file('imagemultiFile') as $eachfile) {
-                $name = time().rand().'.'.$eachfile->getClientOriginalExtension();
+            foreach($request->file('imagemultiFile') as $k=>$eachfile) {
+                $name = pathinfo($eachfile->getClientOriginalName(), PATHINFO_FILENAME).'_'.time().'.'.$eachfile->getClientOriginalExtension();
                 $file_path = '/uploads/products/documents/';
                 $destinationPath = public_path($file_path);
                 $eachfile->move($destinationPath, $name);
                 $productlist = new ProductFile;
+                $productlist->category_id =  $request->input('filecategory')[$k];
                 $productlist->file_name = $name;
                 $productlist->product_id = $product_id;
                 $productlist->save();
@@ -235,6 +240,11 @@ class ProductController extends Controller
     public function deleteProduct($id){
         Product::where('id', '=', $id)->delete();
         return response()->json(['status'=>'1','message' => 'Product deleted Successfully'], 200);
+    }
+
+    public function delete_product_doc($id){
+        ProductFile::where('id', $id)->delete();
+        return response()->json(['status'=>'1','message' => 'Selected Product Document deleted Successfully'], 200);
     }
 
 }

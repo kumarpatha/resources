@@ -57,6 +57,8 @@ Route::group([
     Route::get('get-project-info/{id}', 'ProjectController@get_project_info');
     Route::post('edit-project', 'ProjectController@edit_project');
     Route::get('deleteProject/{id}', 'ProjectController@deleteProject');
+    Route::get('delete_project_doc/{id}', 'ProjectController@delete_project_doc');
+    
 
     //Product
     Route::get('products', 'ProductController@products');
@@ -65,5 +67,11 @@ Route::group([
     Route::get('get-product-info/{id}', 'ProductController@get_product_info');
     Route::post('edit-product', 'ProductController@edit_product');
     Route::get('deleteProduct/{id}', 'ProductController@deleteProduct');
-    
+    Route::get('delete_product_doc/{id}', 'ProjectController@delete_product_doc');
+
+    //Categories
+    Route::get('product-categories', 'ProductCategoryController@product_categories');
+    Route::post('add-product-category', 'ProductCategoryController@add_product_category');
+    Route::get('project-categories', 'ProjectCategoryController@project_categories');
+    Route::post('add-project-category', 'ProjectCategoryController@add_project_category');
 });

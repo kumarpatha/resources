@@ -24,4 +24,8 @@ class Project extends Model
         return $this->hasMany(ProjectFile::class);
     }
 
+    public function products(){
+        return $this->hasMany(Product::class);
+    }
+
 }

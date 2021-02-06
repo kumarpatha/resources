@@ -3,7 +3,7 @@
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
-class ProjectFile extends Model
+class ProductCategory extends Model
 {
    
     /**
@@ -12,11 +12,6 @@ class ProjectFile extends Model
      * @var array
      */
     protected $fillable = [
-        'project_id', 'file_name'
+        'category_name', 'status'
     ];
-
-    public function projectCategory(){
-        return $this->belongsTo(ProjectCategory::class, 'category_id', 'id');
-    }
-
 }

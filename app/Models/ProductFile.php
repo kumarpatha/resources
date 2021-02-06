@@ -15,4 +15,8 @@ class ProductFile extends Model
         'product_id', 'file_name'
     ];
 
+    public function productCategory(){
+        return $this->belongsTo(ProductCategory::class, 'category_id', 'id');
+    }
+
 }
