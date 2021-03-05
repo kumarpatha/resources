@@ -50,7 +50,7 @@ class ClientController extends Controller
     {
         $validator = $request->validate([
             'data.name' => 'required',
-            'data.email' => 'required|email|unique:clients,email',
+            'data.email' => 'required|email',
             'data.description' => 'required',
         ]);
         

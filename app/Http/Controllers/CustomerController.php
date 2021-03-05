@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 
 use App\Models\Customer;
 use Illuminate\Support\Facades\Storage;
+use DataTables;
 use DB;
 
 class CustomerController extends Controller
@@ -30,23 +31,22 @@ class CustomerController extends Controller
             'country' => 'required',
             'name' => 'required',
             'mobile' => 'required',
-            'email' => 'required|email|unique:customers,email',
-            'note' => 'required'
+            'email' => 'required|email|unique:customers,email'
         ]);
         $count = Customer::count();
         $customer = new Customer;
-        $customer->customer_name = $request->input('customerName');
-        $customer->user_id = $request->user()->id;
-        $customer->org_number = $request->input('orgname');
+        $customer->customer_name = $this->filter_data($request->input('customerName'));
+        $customer->user_id = $this->filter_data($request->user()->id);
+        $customer->org_number = $this->filter_data($request->input('orgname'));
         $customer->customer_id = "CU-0000".($count+1);
-        $customer->country = $request->input('country');
-        $customer->address = $request->input('address');
-        $customer->postal_code = $request->input('postal_code');
-        $customer->postal_area = $request->input('postal_area');
-        $customer->name = $request->input('name');
-        $customer->email = $request->input('email');
-        $customer->mobile_number = $request->input('mobile');
-        $customer->note = $request->input('note');
+        $customer->country = $this->filter_data($request->input('country'));
+        $customer->address = $this->filter_data($request->input('address'));
+        $customer->postal_code = $this->filter_data($request->input('postal_code'));
+        $customer->postal_area = $this->filter_data($request->input('postal_area'));
+        $customer->name = $this->filter_data($request->input('name'));
+        $customer->email = $this->filter_data($request->input('email'));
+        $customer->mobile_number = $this->filter_data($request->input('mobile'));
+        $customer->note = $this->filter_data($request->input('note'));
         $customer->status = 1;
         if($request->hasFile('imageFile')) {
             $image = $request->file('imageFile');
@@ -64,23 +64,50 @@ class CustomerController extends Controller
         }
     }
 
-    public function customers() {
-        $customers = Customer::where('status', '=', '1')->withCount(['projects'])
+    public function customers(Request $request) {
+        $customers = Customer::where('customers.status', '=', '1')->withCount(['projects'])
                         ->with(['projects'=> function($query){
                             $query->select('id', 'customer_id')->withCount('products');
                         }])
-                        ->get();
-        if(count($customers) > 0) {
-            foreach($customers as $k=>$eachcutomer) {
-                $product_count = 0;
-                if(count($eachcutomer['projects']) > 0) {
-                    foreach($eachcutomer['projects'] as $eachproject){
-                        $product_count = $product_count + $eachproject->products_count;
-                    }
-                }
-                $customers[$k]['products_count'] = $product_count;
-            }
-        }
+                        ->join('users', 'users.id', '=', 'customers.user_id')
+                        ->where('users.client_id', $request->user()->client_id);
+                        
+        return DataTables::eloquent($customers)
+                        ->addColumn('image_base_path', 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/customers')
+                        ->addIndexColumn('index')
+                        ->editColumn('customer_name', function($eachcutomer) {
+                            return  "<a href='/view-customer/$eachcutomer->id'>".$eachcutomer->customer_name."</a>";
+                        })
+                        ->editColumn('customer_name_raw', function($eachcutomer) {
+                            return  $eachcutomer->customer_name;
+                        })
+                        ->addColumn('products_count', function($eachcutomer) {
+                            $product_count = 0;
+                            if(count($eachcutomer['projects']) > 0) {
+                                foreach($eachcutomer['projects'] as $eachproject){
+                                    $product_count = $product_count + $eachproject->products_count;
+                                }
+                            }
+                            return $product_count;
+                        })
+                        ->rawColumns(['products_count', 'customer_name'])
+                        ->make();
+        // if(count($customers) > 0) {
+        //     foreach($customers as $k=>$eachcutomer) {
+        //         $product_count = 0;
+        //         if(count($eachcutomer['projects']) > 0) {
+        //             foreach($eachcutomer['projects'] as $eachproject){
+        //                 $product_count = $product_count + $eachproject->products_count;
+        //             }
+        //         }
+        //         $customers[$k]['products_count'] = $product_count;
+        //     }
+        // }
+        //return response()->json(['status'=>'1','message' => 'Customer List', 'customers' => $customers, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/customers'], 200);
+    }
+
+    public function customersList() {
+        $customers = Customer::where('status', '=', '1')->select('customer_name', 'id')->get();
         return response()->json(['status'=>'1','message' => 'Customer List', 'customers' => $customers, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/customers'], 200);
     }
 
@@ -96,6 +123,7 @@ class CustomerController extends Controller
                      ->where(function($query) use ($search_text) {
                         $query->orWhere('org_number', 'Like', '%'.$search_text.'%')
                         ->orWhere('name', 'Like', '%'.$search_text.'%')
+                        ->orWhere('customer_name', 'Like', '%'.$search_text.'%')
                         ->orWhere('email', 'Like', '%'.$search_text.'%')
                         ->orWhere('postal_code', 'Like', '%'.$search_text.'%')
                         ->orWhere('postal_area', 'Like', '%'.$search_text.'%')
@@ -117,22 +145,22 @@ class CustomerController extends Controller
             'country' => 'required',
             'name' => 'required',
             'mobile' => 'required',
-            'email' => 'required|email',
-            'note' => 'required'
+            'email' => 'required|email'
         ]);
 
         $customer = Customer::find($request->input('id'));
-        $customer->customer_name = $request->input('customerName');
+        $customer->customer_name = $this->filter_data($request->input('customerName'));
         $customer->user_id = $request->user()->id;
-        $customer->org_number = $request->input('orgname');
-        $customer->address = $request->input('address');
-        $customer->country = $request->input('country');
-        $customer->postal_code = $request->input('postal_code');
-        $customer->postal_area = $request->input('postal_area');
-        $customer->name = $request->input('name');
-        $customer->email = $request->input('email');
-        $customer->mobile_number = $request->input('mobile');
-        $customer->note = $request->input('note');
+        $customer->org_number = $this->filter_data($request->input('orgname'));
+        $customer->address = $this->filter_data($request->input('address'));
+        $customer->country = $this->filter_data($request->input('country'));
+        $customer->address = $this->filter_data($request->input('address'));
+        $customer->postal_code = $this->filter_data($request->input('postal_code'));
+        $customer->postal_area = $this->filter_data($request->input('postal_area'));
+        $customer->name = $this->filter_data($request->input('name'));
+        $customer->email = $this->filter_data($request->input('email'));
+        $customer->mobile_number = $this->filter_data($request->input('mobile'));
+        $customer->note = $this->filter_data($request->input('note'));
         $customer->status = 1; 
         if($request->hasFile('imageFile')) {
             $image = $request->file('imageFile');
@@ -154,6 +182,13 @@ class CustomerController extends Controller
     public function deleteCustomer($id){
         Customer::where('id', '=', $id)->delete();
         return response()->json(['status'=>'1','message' => 'Customer deleted Successfully'], 200);
+    }
+
+    public function filter_data($input){
+        if(strtolower($input) == 'null') {
+            return NULL;
+        }
+        return $input;
     }
 
 }

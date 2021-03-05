@@ -40,4 +40,22 @@ class ProjectCategoryController extends Controller
         $categories = ProjectCategory::all();
         return response()->json(['status'=>'1','message' => 'Projectt Category List', 'categories' => $categories], 200);
     }
+
+    public function edit_project_category(Request $request) {
+        $validator = $request->validate([
+            'category_name' => 'required',
+            'category_id' => 'required',
+            'status' => 'required',
+        ]);
+        
+        $category = ProjectCategory::find($request->input('category_id'));
+        $category->category_name = $request->input('category_name');
+        $category->status = $request->input('status');
+        
+        if($category->save()) {
+            return response()->json(['status'=>'1','message' => 'Successfully Project Category updated.'], 200);
+        } else {
+            return response()->json(['status'=>'0','message' => 'Error occured in Project Category update.'], 422);
+        }
+    }
 }

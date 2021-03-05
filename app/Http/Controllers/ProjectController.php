@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use Illuminate\Support\Facades\Storage;
+use DataTables;
 use DB;
 
 class ProjectController extends Controller
@@ -29,42 +30,42 @@ class ProjectController extends Controller
         ]);
         $count = Project::count();
         $project = new Project;
-        $project->project_name = $request->input('project_name');
-        $project->customer_id = $request->input('customer');
+        $project->project_name = $this->filter_data($request->input('project_name'));
+        $project->customer_id =$this->filter_data($request->input('customer'));
         $project->project_id = "PR-0000".($count+1);
         $project->user_id = $request->user()->id;
-        $project->project_address = $request->input('project_address');
-        $project->postal_area = $request->input('postal_area');
-        $project->postal_code = $request->input('postal_code');
-        $project->project_mang_name = $request->input('project_mang_name');
-        $project->project_mang_mobile = $request->input('project_mang_mobile');
-        $project->project_mang_email = $request->input('project_mang_email');
+        $project->project_address = $this->filter_data($request->input('project_address'));
+        $project->postal_area = $this->filter_data($request->input('postal_area'));
+        $project->postal_code = $this->filter_data($request->input('postal_code'));
+        $project->project_mang_name = $this->filter_data($request->input('project_mang_name'));
+        $project->project_mang_mobile = $this->filter_data($request->input('project_mang_mobile'));
+        $project->project_mang_email = $this->filter_data($request->input('project_mang_email'));
         
-        $project->onsite_name = $request->input('onsite_name');
-        $project->onsite_mobile = $request->input('onsite_mobile');
-        $project->onsite_email = $request->input('onsite_email');
-        $project->project_type = $request->input('project_type');
-        $project->project_status = $request->input('project_status');
-        $project->property_area = $request->input('property_area');
-        $project->no_of_floors = $request->input('no_of_floors');
-        $project->building_year = $request->input('building_year');
-        $project->last_refurbished = $request->input('last_refurbished');
-        $project->env_report = $request->input('env_report');
-        $project->fdv_document = $request->input('fdv_document');
-        $project->ambition = $request->input('ambition');
-        $project->project_start_date = $request->input('project_start_date');
-        $project->project_catalog_date = $request->input('project_catalog_date');
-        $project->project_avail_date = $request->input('project_avail_date');
-        $project->project_avail_end_date = $request->input('project_avail_end_date');
-        $project->note = $request->input('note');
-        $project->billing_project_company = $request->input('billing_project_company');
-        $project->billing_orgno = $request->input('billing_orgno');
-        $project->billing_project_number = $request->input('billing_project_number');
-        $project->billing_customer_ref = $request->input('billing_customer_ref');
-        $project->billing_address = $request->input('billing_address');
-        $project->billing_postal_code = $request->input('billing_postal_code');
-        $project->billing_postal_area = $request->input('billing_postal_area');
-        $project->credit_period = $request->input('credit_period');
+        $project->onsite_name = $this->filter_data($request->input('onsite_name'));
+        $project->onsite_mobile = $this->filter_data($request->input('onsite_mobile'));
+        $project->onsite_email = $this->filter_data($request->input('onsite_email'));
+        $project->project_type = $this->filter_data($request->input('project_type'));
+        $project->project_status = $this->filter_data($request->input('project_status'));
+        $project->property_area = $this->filter_data($request->input('property_area'));
+        $project->no_of_floors = $this->filter_data($request->input('no_of_floors'));
+        $project->building_year = $this->filter_data($request->input('building_year'));
+        $project->last_refurbished = $this->filter_data($request->input('last_refurbished'));
+        $project->env_report = $this->filter_data($request->input('env_report'));
+        $project->fdv_document = $this->filter_data($request->input('fdv_document'));
+        $project->ambition = $this->filter_data($request->input('ambition'));
+        $project->project_start_date = $this->filter_data($request->input('project_start_date'));
+        $project->project_catalog_date = $this->filter_data($request->input('project_catalog_date'));
+        $project->project_avail_date = $this->filter_data($request->input('project_avail_date'));
+        $project->project_avail_end_date = $this->filter_data($request->input('project_avail_end_date'));
+        $project->note = $this->filter_data($request->input('note'));
+        $project->billing_project_company = $this->filter_data($request->input('billing_project_company'));
+        $project->billing_orgno = $this->filter_data($request->input('billing_orgno'));
+        $project->billing_project_number = $this->filter_data($request->input('billing_project_number'));
+        $project->billing_customer_ref = $this->filter_data($request->input('billing_customer_ref'));
+        $project->billing_address = $this->filter_data($request->input('billing_address'));
+        $project->billing_postal_code = $this->filter_data($request->input('billing_postal_code'));
+        $project->billing_postal_area = $this->filter_data($request->input('billing_postal_area'));
+        $project->credit_period = $this->filter_data($request->input('credit_period'));
         if($request->hasFile('imageFile')) {
             $image = $request->file('imageFile');
             $name = time().rand().'.'.$image->getClientOriginalExtension();
@@ -97,13 +98,34 @@ class ProjectController extends Controller
         }
     }
 
-    public function projects() {
+    public function projects(Request $request) {
         $projects = Project::with(['customer' => function($query){
                         $query->select('name as customer_name', 'id', 'image_path');
                     }])->with(['projectdocs' => function($query){
                         $query->select('project_id', 'file_name');
-                    }])->get()->toArray();
+                    }])
+                    ->select('projects.*')
+                    ->join('users', 'users.id', '=', 'projects.user_id')
+                    ->where('users.client_id', $request->user()->client_id);
+
+        return DataTables::eloquent($projects)
+                    ->addColumn('image_base_path', 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/projects')
+                    ->addIndexColumn('index')
+                    ->editColumn('project_name', function($project) {
+                        return  "<a href='/view-project/$project->id'>".$project->project_name."</a>";
+                    })
+                    ->addColumn('project_name_raw', function($project) {
+                        return  $project->project_name;
+                    })
+                    ->rawColumns(['project_name'])
+                    ->make();
+        //return response()->json(['status'=>'1','message' => 'Project List', 'projects' => $projects, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/projects'], 200);
+    }
+
+    public function projectList(){
+        $projects = Project::select('id', 'project_name')->get();
         return response()->json(['status'=>'1','message' => 'Project List', 'projects' => $projects, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/projects'], 200);
+
     }
 
     public function search_project(Request $request) {
@@ -144,41 +166,41 @@ class ProjectController extends Controller
         ]);
         
         $project = Project::find($request->input('id'));
-        $project->project_name = $request->input('project_name');
-        $project->customer_id = $request->input('customer');
+        $project->project_name = $this->filter_data($request->input('project_name'));
+        $project->customer_id =$this->filter_data($request->input('customer'));
         $project->user_id = $request->user()->id;
-        $project->project_address = $request->input('project_address');
-        $project->postal_area = $request->input('postal_area');
-        $project->postal_code = $request->input('postal_code');
-        $project->project_mang_name = $request->input('project_mang_name');
-        $project->project_mang_mobile = $request->input('project_mang_mobile');
-        $project->project_mang_email = $request->input('project_mang_email');
+        $project->project_address = $this->filter_data($request->input('project_address'));
+        $project->postal_area = $this->filter_data($request->input('postal_area'));
+        $project->postal_code = $this->filter_data($request->input('postal_code'));
+        $project->project_mang_name = $this->filter_data($request->input('project_mang_name'));
+        $project->project_mang_mobile = $this->filter_data($request->input('project_mang_mobile'));
+        $project->project_mang_email = $this->filter_data($request->input('project_mang_email'));
         
-        $project->onsite_name = $request->input('onsite_name');
-        $project->onsite_mobile = $request->input('onsite_mobile');
-        $project->onsite_email = $request->input('onsite_email');
-        $project->project_type = $request->input('project_type');
-        $project->project_status = $request->input('project_status');
-        $project->property_area = $request->input('property_area');
-        $project->no_of_floors = $request->input('no_of_floors');
-        $project->building_year = $request->input('building_year');
-        $project->last_refurbished = $request->input('last_refurbished');
-        $project->env_report = $request->input('env_report');
-        $project->fdv_document = $request->input('fdv_document');
-        $project->ambition = $request->input('ambition');
-        $project->project_start_date = $request->input('project_start_date');
-        $project->project_catalog_date = $request->input('project_catalog_date');
-        $project->project_avail_date = $request->input('project_avail_date');
-        $project->project_avail_end_date = $request->input('project_avail_end_date');
-        $project->note = $request->input('note');
-        $project->billing_project_company = $request->input('billing_project_company');
-        $project->billing_orgno = $request->input('billing_orgno');
-        $project->billing_project_number = $request->input('billing_project_number');
-        $project->billing_customer_ref = $request->input('billing_customer_ref');
-        $project->billing_address = $request->input('billing_address');
-        $project->billing_postal_code = $request->input('billing_postal_code');
-        $project->billing_postal_area = $request->input('billing_postal_area');
-        $project->credit_period = $request->input('credit_period');
+        $project->onsite_name = $this->filter_data($request->input('onsite_name'));
+        $project->onsite_mobile = $this->filter_data($request->input('onsite_mobile'));
+        $project->onsite_email = $this->filter_data($request->input('onsite_email'));
+        $project->project_type = $this->filter_data($request->input('project_type'));
+        $project->project_status = $this->filter_data($request->input('project_status'));
+        $project->property_area = $this->filter_data($request->input('property_area'));
+        $project->no_of_floors = $this->filter_data($request->input('no_of_floors'));
+        $project->building_year = $this->filter_data($request->input('building_year'));
+        $project->last_refurbished = $this->filter_data($request->input('last_refurbished'));
+        $project->env_report = $this->filter_data($request->input('env_report'));
+        $project->fdv_document = $this->filter_data($request->input('fdv_document'));
+        $project->ambition = $this->filter_data($request->input('ambition'));
+        $project->project_start_date = $this->filter_data($request->input('project_start_date'));
+        $project->project_catalog_date = $this->filter_data($request->input('project_catalog_date'));
+        $project->project_avail_date = $this->filter_data($request->input('project_avail_date'));
+        $project->project_avail_end_date = $this->filter_data($request->input('project_avail_end_date'));
+        $project->note = $this->filter_data($request->input('note'));
+        $project->billing_project_company = $this->filter_data($request->input('billing_project_company'));
+        $project->billing_orgno = $this->filter_data($request->input('billing_orgno'));
+        $project->billing_project_number = $this->filter_data($request->input('billing_project_number'));
+        $project->billing_customer_ref = $this->filter_data($request->input('billing_customer_ref'));
+        $project->billing_address = $this->filter_data($request->input('billing_address'));
+        $project->billing_postal_code = $this->filter_data($request->input('billing_postal_code'));
+        $project->billing_postal_area = $this->filter_data($request->input('billing_postal_area'));
+        $project->credit_period = $this->filter_data($request->input('credit_period'));
         if($request->hasFile('imageFile')) {
             $image = $request->file('imageFile');
             $name = time().rand().'.'.$image->getClientOriginalExtension();
@@ -219,6 +241,13 @@ class ProjectController extends Controller
     public function delete_project_doc($id){
         ProjectFile::where('id', $id)->delete();
         return response()->json(['status'=>'1','message' => 'Selected Project Document deleted Successfully'], 200);
+    }
+
+    public function filter_data($input){
+        if(strtolower($input) == 'null') {
+            return NULL;
+        }
+        return $input;
     }
 
 }

@@ -33,9 +33,10 @@ class LoginController extends Controller
         $user = User::where('email', $request->username)->with('client')->first();
     
         if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+            // throw ValidationException::withMessages([
+            //     'error' => 'Incorrect Username or password. Logon denied.',
+            // ]);
+            return response()->json(['status' => '0', 'message' => 'Incorrect Username or password. Logon denied.'], 422);
         }
         $dataResponse = ['token' =>  $user->createToken($request->device_name)->plainTextToken, 'id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => $user->role, 'client_id' => $user->client_id, 'client_name' => $user->client ? $user->client->name : ''];
         return response()->json(['status' => '1', 'message' => 'Successfully Login', 'user' => $dataResponse ], 200);

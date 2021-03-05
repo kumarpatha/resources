@@ -20,7 +20,6 @@ class ProductCategoryController extends Controller
      */
     public function add_product_category(Request $request)
     {
-       
         $validator = $request->validate([
             'category_name' => 'required',
         ]);
@@ -39,6 +38,24 @@ class ProductCategoryController extends Controller
     public function product_categories() {
         $categories = ProductCategory::all();
         return response()->json(['status'=>'1','message' => 'Product Category List', 'categories' => $categories], 200);
+    }
+
+    public function edit_product_category(Request $request) {
+        $validator = $request->validate([
+            'category_name' => 'required',
+            'category_id' => 'required',
+            'status' => 'required',
+        ]);
+        
+        $category = ProductCategory::find($request->input('category_id'));
+        $category->category_name = $request->input('category_name');
+        $category->status = $request->input('status');
+        
+        if($category->save()) {
+            return response()->json(['status'=>'1','message' => 'Successfully Product Category updated.'], 200);
+        } else {
+            return response()->json(['status'=>'0','message' => 'Error occured in Product Category update.'], 422);
+        }
     }
 
  

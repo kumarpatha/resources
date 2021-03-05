@@ -22,7 +22,8 @@ Route::post('users/register', 'UsersController@register');
 Route::post('users/authenticate', 'LoginController@authenticate');
 Route::post('forget-password', 'LoginController@forget_password');
 Route::post('reset-password', 'LoginController@reset_password');
-
+Route::get('pdf', 'ProductController@pdf');
+Route::get('pdf2', 'ProductController@pdf2');
 
 Route::group([
     'middleware' => ['auth:sanctum'],
@@ -40,10 +41,11 @@ Route::group([
     Route::post('add-client', 'ClientController@add_client');
     Route::get('getclient/{id}', 'ClientController@getclient');
     Route::post('edit-client', 'ClientController@edit_client');
-    Route::get('deleteClient/{id}', 'ClientController@deleteClient');
+    // Route::get('deleteClient/{id}', 'ClientController@deleteClient');
 
     //Customers
-    Route::get('customers', 'CustomerController@customers');
+    Route::post('customers', 'CustomerController@customers');
+    Route::get('customersList', 'CustomerController@customersList');
     Route::post('add-customer', 'CustomerController@add_customer');  
     Route::get('get-customer-info/{id}', 'CustomerController@get_customer_info');
     Route::post('search-customer', 'CustomerController@search_customer');
@@ -51,7 +53,8 @@ Route::group([
     Route::get('deleteCustomer/{id}', 'CustomerController@deleteCustomer');
     
     //Project
-    Route::get('projects', 'ProjectController@projects');
+    Route::post('projects', 'ProjectController@projects');
+    Route::get('projectList', 'ProjectController@projectList');
     Route::post('add-project', 'ProjectController@add_project');
     Route::post('search-project', 'ProjectController@search_project');
     Route::get('get-project-info/{id}', 'ProjectController@get_project_info');
@@ -61,17 +64,23 @@ Route::group([
     
 
     //Product
-    Route::get('products', 'ProductController@products');
+    Route::post('products', 'ProductController@products');
+    Route::get('productList', 'ProductController@productList'); 
     Route::post('add-product', 'ProductController@add_product');
     Route::post('search-product', 'ProductController@search_product');
     Route::get('get-product-info/{id}', 'ProductController@get_product_info');
     Route::post('edit-product', 'ProductController@edit_product');
     Route::get('deleteProduct/{id}', 'ProductController@deleteProduct');
     Route::get('delete_product_doc/{id}', 'ProjectController@delete_product_doc');
+    Route::get('filter-data', 'ProductController@filter_product');
+    
 
     //Categories
     Route::get('product-categories', 'ProductCategoryController@product_categories');
     Route::post('add-product-category', 'ProductCategoryController@add_product_category');
+    Route::post('edit-product-category', 'ProductCategoryController@edit_product_category');
     Route::get('project-categories', 'ProjectCategoryController@project_categories');
     Route::post('add-project-category', 'ProjectCategoryController@add_project_category');
+    Route::post('edit-project-category', 'ProjectCategoryController@edit_project_category');
+    
 });
