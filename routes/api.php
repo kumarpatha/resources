@@ -22,7 +22,6 @@ Route::post('users/register', 'UsersController@register');
 Route::post('users/authenticate', 'LoginController@authenticate');
 Route::post('forget-password', 'LoginController@forget_password');
 Route::post('reset-password', 'LoginController@reset_password');
-Route::get('pdf', 'ProductController@pdf');
 Route::get('pdf2', 'ProductController@pdf2');
 
 Route::group([
@@ -73,6 +72,7 @@ Route::group([
     Route::get('deleteProduct/{id}', 'ProductController@deleteProduct');
     Route::get('delete_product_doc/{id}', 'ProjectController@delete_product_doc');
     Route::get('filter-data', 'ProductController@filter_product');
+    Route::post('pdf', 'ProductController@pdf');
     
 
     //Categories

@@ -31,7 +31,7 @@ class CustomerController extends Controller
             'country' => 'required',
             'name' => 'required',
             'mobile' => 'required',
-            'email' => 'required|email|unique:customers,email'
+            'email' => 'required|email'
         ]);
         $count = Customer::count();
         $customer = new Customer;
@@ -58,7 +58,7 @@ class CustomerController extends Controller
             $customer->image_path = $name;
         }
         if($customer->save()) {
-            return response()->json(['status'=>'1','message' => 'Successfully customer added.'], 200);
+            return response()->json(['status'=>'1','message' => 'Successfully customer added.', 'id' => $customer->id], 200);
         } else {
             return response()->json(['status'=>'0','message' => 'Error occured in customer add.'], 422);
         }

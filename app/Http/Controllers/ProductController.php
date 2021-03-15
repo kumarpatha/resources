@@ -10,12 +10,15 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Project;
+use App\Models\ProductCategory;
 use App\Models\ProductFile;
 use Illuminate\Support\Facades\Storage;
 use PDF;
 
 use DataTables;
 use DB;
+use Exception;
+use PhpOffice\PhpSpreadsheet\Calculation\Category;
 
 class ProductController extends Controller
 {
@@ -67,6 +70,7 @@ class ProductController extends Controller
         $product->building_part = $this->filter_data($request->input('building_part'));
         $product->quantity = $this->filter_data($request->input('quantity'));
         $product->unit = $this->filter_data($request->input('unit'));
+        $product->unitqnt = $this->filter_data($request->input('unitqnt'));
         $product->length = $this->filter_data($request->input('length'));
         $product->width = $this->filter_data($request->input('width'));
         $product->height = $this->filter_data($request->input('height'));
@@ -122,12 +126,14 @@ class ProductController extends Controller
                         $query->select('project_name', 'id', 'project_image');
                     }])->with(['productdocs' => function($query){
                         $query->select('id','category_id','product_id', 'file_name')->with('productCategory');
-                    }])->with('category')
+                    }])
+                    ->join('product_categories', 'product_categories.id', '=', 'products.category')
                     ->join('projects', 'products.project_id', '=', 'projects.id')
                     ->join('customers', 'customers.id', '=', 'projects.customer_id')
                     ->join('users', 'users.id', '=', 'products.user_id')
-                    ->select('products.*')
+                    ->select('products.*', 'product_categories.category_name')
                     ->where('users.client_id', $request->user()->client_id);
+        $products_count = Product::join('users', 'users.id', '=', 'products.user_id')->where('users.client_id', $request->user()->client_id)->count();            
         if($request->input('project')){
             $products =  $products->where('products.project_id', $request->input('project'));
         }
@@ -136,20 +142,48 @@ class ProductController extends Controller
         }
         if($request->input('project_filter')){
             $products =  $products->whereIn('products.project_id', $request->input('project_filter'));
-        }        
+        }
+        if($request->input('category_filter')){
+            $products = $products->whereIn('product_categories.id', $request->input('category_filter'));
+        }
+        if($request->input('status_filter')){
+            $products =  $products->whereIn('products.status', $request->input('status_filter'));
+        }
+           
          //echo "<pre>";
          //print_r($products->get()); //die;
         return DataTables::eloquent($products)
                     ->addColumn('image_base_path', 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/products')
                     ->addIndexColumn('index')
+                    ->addColumn('total_count', function($product) use ($products_count) {
+                        return $products_count;
+                    })
+                    ->addColumn('checkbox', function($product) {
+                        return "<div class='round'>
+												<input type='checkbox' name='prod_id' id='checkbox".$product->id."' (click)='viewpdf(".$product->id.")'/>
+												<label for='checkbox".$product->id."'></label></div>";
+                    })
                     ->editColumn('status', function($product) {
-                        return  ($product->status) ? "Available" : "Not Available";
+                        //return  ($product->status) ? "Available" : "Not Available";
+                        if($product->status == '1') {
+                             $status = 'AVAILABLE ONSITE'; 
+                        } else if($product->status == '2') {
+                            $status = 'AVAILABLE FROM STORAGE';
+                        } else if($product->status == '3') {
+                            $status = 'SOLD';
+                        } else {
+                            $status = 'UNAVAILABLE';
+                        }
+                        return  $status; 
                     })
                     ->editColumn('product_id', function($product) {
                         return  "<a href='/view-product/$product->id'>".$product->product_id."</a>";
                     })
                     ->editColumn('product_name', function($product) {
                         return  "<a href='/view-product/$product->id'>".$product->product_name."</a>";
+                    })
+                    ->editColumn('description', function($product) {
+                        return substr($product->description, 0, 30). "...";
                     })
                     ->addColumn('product_name_raw', function($product) {
                         return  $product->product_name;
@@ -168,7 +202,7 @@ class ProductController extends Controller
                     //         return '';
                     //     }
                     // })
-                    ->rawColumns(['product_id', 'product_name'])
+                    ->rawColumns(['product_id', 'product_name', 'checkbox'])
                     ->make();
         //return response()->json(['status'=>'1','message' => 'product List', 'products' => $products, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/products'], 200);
     }
@@ -246,6 +280,7 @@ class ProductController extends Controller
         $product->building_part = $this->filter_data($request->input('building_part'));
         $product->quantity = $this->filter_data($request->input('quantity'));
         $product->unit = $this->filter_data($request->input('unit'));
+        $product->unitqnt = $this->filter_data($request->input('unitqnt'));
         $product->length = $this->filter_data($request->input('length'));
         $product->width = $this->filter_data($request->input('width'));
         $product->height = $this->filter_data($request->input('height'));
@@ -269,8 +304,9 @@ class ProductController extends Controller
             $image = $request->file('imageFile');
             $name = time().rand().'.'.$image->getClientOriginalExtension();
             $file_path = '/uploads/products/';
-            $destinationPath = public_path($file_path);
-            $image->move($destinationPath, $name);
+            //$destinationPath = public_path($file_path);
+            //$image->move($destinationPath, $name);
+            Storage::disk('s3')->put($file_path.$name, file_get_contents($image));
             $product->product_image = $name;
         }
         $product->save();
@@ -280,8 +316,9 @@ class ProductController extends Controller
             foreach($request->file('imagemultiFile') as $k=>$eachfile) {
                 $name = pathinfo($eachfile->getClientOriginalName(), PATHINFO_FILENAME).'_'.time().'.'.$eachfile->getClientOriginalExtension();
                 $file_path = '/uploads/products/documents/';
-                $destinationPath = public_path($file_path);
-                $eachfile->move($destinationPath, $name);
+                // $destinationPath = public_path($file_path);
+                // $eachfile->move($destinationPath, $name);
+                Storage::disk('s3')->put($file_path.$name, file_get_contents($eachfile));
                 $productlist = new ProductFile;
                 $productlist->category_id =  $request->input('filecategory')[$k];
                 $productlist->file_name = $name;
@@ -318,17 +355,50 @@ class ProductController extends Controller
         $projects = Project::select('id', 'customer_id', 'project_name', DB::raw('0 as isChecked'))->where('user_id', $request->user()->id)->get();
         $projects_count = $projects->count();
         $projects = $projects->groupBy('customer_id');
-        return response()->json(['status'=>'1','customer_count' => $customers_count, 'customers' => $customers, 'project_count' => $projects_count, 'projects' => $projects], 200);
+        $product_category = ProductCategory::select('id', 'category_name', DB::raw('0 as isChecked'))->where('status', '1')->get();
+        $product_category_count = $product_category->count();
+        $status_type = [['name' => 'AVAILABLE ONSITE', 'id' => '1', 'isChecked' => 0 ], ['name' => 'AVAILABLE FROM STORAGE', 'id' => '2', 'isChecked' => 0], ['name' => 'SOLD', 'id' => '3', 'isChecked' => 0], ['name' => 'UNAVAILABLE', 'id' => '4', 'isChecked' => 0]];
+        return response()->json(['status'=>'1','customer_count' => $customers_count, 'customers' => $customers, 'project_count' => $projects_count, 'projects' => $projects, 'product_category' => $product_category, 'product_category_count' => $product_category_count, 'status_type' => $status_type], 200);
     }
 
-    public function pdf() {
-        $pdf = PDF::loadView('pdf.catalog');
-        return $pdf->download('invoice.pdf');
+    public function pdf(Request $request) {
+        //$pdf = PDF::loadView('pdf.catalog');
+        try {
+            $products = $request->all();
+            //print_r($request->all());
+            $product_map = [];
+            $pdfData = [];
+            $data = [];
+            foreach($products['PDFProductProject'] as $key=>$eachproject) {
+                $product_map[$eachproject][] = $products['PDFProduct'][$key];
+            }
+            if(count($product_map) > 0) {
+                foreach($product_map as $keyprod=>$product) {
+                    //DB::enableQueryLog();
+                    $data = Project::with(['products' => function($query) use ($product){
+                                    $query->whereIn('id', $product);
+                                }])
+                                ->where('id', $keyprod)
+                                ->with('customer')
+                                ->first()
+                                ->toArray();
+                              
+                    array_push($pdfData, $data);
+                    //print_r(DB::getQueryLog()); 
+                }
+                $html = view('pdf.catalog', compact('pdfData'))->render();
+                return response()->json(['html' => $html]);
+            }
+        } catch (Exception $ex) {
+            echo $ex->getMessage();
+            echo $ex->getTraceAsString();
+        }
     }
 
     public function pdf2() {
-        $pdf = PDF::loadView('pdf.catalog2');
-        return $pdf->download('invoice2.pdf');
+        //$pdf = PDF::loadView('pdf.catalog2');
+        //return $pdf->download('invoice2.pdf');
+        return view('pdf.catalog2');
     }
 
 }
