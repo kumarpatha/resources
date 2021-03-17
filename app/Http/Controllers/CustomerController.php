@@ -111,6 +111,14 @@ class CustomerController extends Controller
         return response()->json(['status'=>'1','message' => 'Customer List', 'customers' => $customers, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/customers'], 200);
     }
 
+    public function customersgrid($page_id) {
+        $limit = ($page_id-1)*12;
+        $offset = 12;
+        $customers = Customer::where('status', '=', '1')->select('customer_name', 'id')->skip($limit)->take($offset)->get();
+        return response()->json(['status'=>'1','message' => 'Customer List', 'customers' => $customers, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/customers'], 200);
+    }
+    
+
     public function get_customer_info($id) {
         $customer = Customer::where('id', '=', $id)->first();
         return response()->json(['status'=>'1','message' => 'Client Information', 'customer' => $customer, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/customers'], 200);

@@ -125,7 +125,13 @@ class ProjectController extends Controller
     public function projectList(){
         $projects = Project::select('id', 'project_name')->get();
         return response()->json(['status'=>'1','message' => 'Project List', 'projects' => $projects, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/projects'], 200);
+    }
 
+    public function projectgrid($page_id){
+        $limit = ($page_id-1)*12;
+        $offset = 12;
+        $projects = Project::select('id', 'project_name', 'project_image')->skip($limit)->take($offset)->get();
+        return response()->json(['status'=>'1','message' => 'Project List', 'projects' => $projects, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/projects'], 200);
     }
 
     public function search_project(Request $request) {

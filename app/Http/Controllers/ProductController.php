@@ -212,6 +212,13 @@ class ProductController extends Controller
         return response()->json(['status'=>'1','message' => 'product List', 'products' => $products, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/products'], 200);
     }
 
+    public function productgrid($page_id){
+        $limit = ($page_id-1)*12;
+        $offset = 12;
+        $products = Product::select('id', 'product_name', 'product_image')->skip($limit)->take($offset)->get();
+        return response()->json(['status'=>'1','message' => 'product List', 'products' => $products, 'image_base_path' => 'https://resources-products.s3.us-east-2.amazonaws.com/uploads/products'], 200);
+    }
+
     public function search_product(Request $request) {
         DB::enableQueryLog();
         $search_text = $request->input('query');
@@ -350,9 +357,16 @@ class ProductController extends Controller
         return $input;
     }
     public function filter_product(Request $request) {
-        $customers = Customer::select('id', 'customer_name', DB::raw('0 as isChecked'))->where('status', '1')->where('user_id', $request->user()->id)->get();
+        $customers = Customer::select('customers.id', 'customers.customer_name', DB::raw('0 as isChecked'))->where('customers.status', '1')
+                        ->join('users', 'users.id', '=', 'customers.user_id')
+                        ->where('users.client_id', $request->user()->client_id)
+                        ->get();
         $customers_count = $customers->count();
-        $projects = Project::select('id', 'customer_id', 'project_name', DB::raw('0 as isChecked'))->where('user_id', $request->user()->id)->get();
+        $projects = Project::select('projects.id', 'projects.customer_id', 'projects.project_name', DB::raw('0 as isChecked'))
+                     ->join('customers', 'customers.id', '=', 'projects.customer_id')
+                     ->join('users', 'users.id', '=', 'customers.user_id')
+                     ->where('users.client_id', $request->user()->client_id)
+                     ->get();
         $projects_count = $projects->count();
         $projects = $projects->groupBy('customer_id');
         $product_category = ProductCategory::select('id', 'category_name', DB::raw('0 as isChecked'))->where('status', '1')->get();

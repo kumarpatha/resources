@@ -50,6 +50,7 @@ Route::group([
     Route::post('search-customer', 'CustomerController@search_customer');
     Route::post('edit-customer', 'CustomerController@edit_customer');
     Route::get('deleteCustomer/{id}', 'CustomerController@deleteCustomer');
+    Route::get('customersgrid/{pagenumber}', 'CustomerController@customersgrid');
     
     //Project
     Route::post('projects', 'ProjectController@projects');
@@ -60,7 +61,7 @@ Route::group([
     Route::post('edit-project', 'ProjectController@edit_project');
     Route::get('deleteProject/{id}', 'ProjectController@deleteProject');
     Route::get('delete_project_doc/{id}', 'ProjectController@delete_project_doc');
-    
+    Route::get('projectgrid/{pagenumber}', 'ProjectController@projectgrid');
 
     //Product
     Route::post('products', 'ProductController@products');
@@ -73,6 +74,8 @@ Route::group([
     Route::get('delete_product_doc/{id}', 'ProjectController@delete_product_doc');
     Route::get('filter-data', 'ProductController@filter_product');
     Route::post('pdf', 'ProductController@pdf');
+    Route::get('productgrid/{pagenumber}', 'ProductController@productgrid');
+    
     
 
     //Categories
